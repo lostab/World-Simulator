@@ -1,5 +1,5 @@
 import { useRef, Suspense } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Sky as DreiSky } from '@react-three/drei'
 import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing'
 import * as THREE from 'three'
@@ -63,7 +63,7 @@ export default function Scene() {
         />
         
         <hemisphereLight 
-          skyColor="#87CEEB" 
+          color="#87CEEB" 
           groundColor="#5C8A3D" 
           intensity={0.4} 
         />

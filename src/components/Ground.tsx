@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 // 创建一个程序化草地纹理
