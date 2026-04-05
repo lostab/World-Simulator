@@ -1,55 +1,99 @@
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei'
-import { Suspense } from 'react'
+import { useRef, Suspense } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { OrbitControls, Environment, Sky as DreiSky } from '@react-three/drei'
+import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing'
+import * as THREE from 'three'
+import Mountains from './Mountains'
 import Ground from './Ground'
-import PhotoFrame from './PhotoFrame'
+import Path from './Path'
+import Trees from './Trees'
+import Stream from './Stream'
+import RiceField from './RiceField'
+import Player from './Player'
+
+function CustomSky() {
+  const skyRef = useRef<THREE.Mesh>(null)
+
+  return (
+    <>
+      <DreiSky 
+        distance={450000}
+        sunPosition={[100, 50, 100]}
+        inclination={0.6}
+        azimuth={0.25}
+        mieCoefficient={0.005}
+        mieDirectionalG={0.8}
+        rayleigh={0.5}
+        turbidity={10}
+      />
+    </>
+  )
+}
 
 export default function Scene() {
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 2, 5], fov: 50 }}
-      style={{ background: '#1a1a1a' }}
+      dpr={[1, 2]}
+      camera={{ position: [0, 2.2, 25], fov: 50 }}
+      gl={{ 
+        antialias: true,
+      }}
+      style={{ background: '#87CEEB' }}
     >
       <Suspense fallback={null}>
-        {/* 环境光照 */}
-        <Environment preset="sunset" />
+        <Environment preset="park" background={false} />
         
-        {/* 环境光 */}
-        <ambientLight intensity={0.3} />
+        <fog attach="fog" args={['#87CEEB', 20, 80]} />
+        
         <directionalLight 
-          position={[5, 5, 5]} 
-          intensity={1} 
-          castShadow 
-          shadow-mapSize={[1024, 1024]}
+          position={[50, 30, 10]} 
+          intensity={2.0}
+          color="#FFF5E0"
+          castShadow
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+          shadow-camera-far={100}
+          shadow-camera-left={-30}
+          shadow-camera-right={30}
+          shadow-camera-top={30}
+          shadow-camera-bottom={-30}
+          shadow-bias={-0.0001}
+          shadow-regular-size={false}
+        />
+        
+        <hemisphereLight 
+          skyColor="#87CEEB" 
+          groundColor="#5C8A3D" 
+          intensity={0.4} 
         />
 
-        {/* 地面 */}
+        <CustomSky />
+
+        <Mountains />
         <Ground />
+        <Path />
+        <Trees />
+        <Stream />
+        <RiceField />
 
-        {/* 示例照片框 - 可以替换为任意照片 */}
-        <PhotoFrame 
-          position={[0, 1.5, -2]} 
-          photoUrl="/photos/sample.jpg"
-        />
+        {/* 玩家角色 - 第三人称视角 */}
+        <Player position={[0, 0, 20]} />
 
-        {/* 相机控制 */}
-        <OrbitControls 
-          enablePan={true}
-          enableZoom={true}
-          enableRotate={true}
-          minDistance={2}
-          maxDistance={20}
-          maxPolarAngle={Math.PI / 2}
-        />
-
-        {/* 地面阴影 */}
-        <ContactShadows 
-          position={[0, 0.01, 0]} 
-          opacity={0.5} 
-          scale={10} 
-          blur={2} 
-        />
+        <EffectComposer enableNormalPass>
+          <Bloom 
+            intensity={0.3}
+            luminanceThreshold={0.9}
+            luminanceSmoothing={0.95}
+            mipmapBlur
+          />
+          <SSAO 
+            samples={31}
+            radius={5}
+            intensity={20}
+            luminanceInfluence={0.5}
+          />
+        </EffectComposer>
       </Suspense>
     </Canvas>
   )
