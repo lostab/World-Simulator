@@ -5,9 +5,62 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>World Simulator</title>
+    <style>
+      body, html, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #87CEEB; }
+      #global-loader {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: #87CEEB;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 10000;
+      }
+      #global-loader.done {
+        display: none;
+      }
+      .loader-content {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        padding: 40px 60px;
+        border-radius: 16px;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center;
+        gap: 20px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      }
+      .loader-emoji { font-size: 48px; animation: pulse 1.5s infinite; line-height: 1; }
+      .loader-title { font-size: 28px; color: #FFFFFF; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.3); line-height: 1; margin: 0; }
+      .loader-dots { display: flex; gap: 8px; }
+      .loader-dot { width: 10px; height: 10px; background: #a8e063; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+      .loader-dot:nth-child(1) { animation-delay: -0.32s; }
+      .loader-dot:nth-child(2) { animation-delay: -0.16s; }
+      .loader-text { font-size: 14px; color: #FFFFFF; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.5); opacity: 1; line-height: 1; margin: 0; }
+      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+      @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    </style>
   </head>
   <body>
+    <div id="global-loader">
+      <div class="loader-content">
+        <div class="loader-emoji">🌳</div>
+        <div class="loader-title">World Simulator</div>
+        <div class="loader-dots">
+          <div class="loader-dot"></div>
+          <div class="loader-dot"></div>
+          <div class="loader-dot"></div>
+        </div>
+        <div class="loader-text">Loading world...</div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.onload = function() {
+        setTimeout(function() {
+          var loader = document.getElementById('global-loader');
+          if (loader) {
+            loader.offsetHeight; 
+            loader.classList.add('done');
+          }
+        }, 3500);
+      };
+    </script>
   </body>
 </html>

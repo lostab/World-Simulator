@@ -1,100 +1,105 @@
-import { useRef, Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Sky as DreiSky } from '@react-three/drei'
-import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing'
+import { useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { Sky as DreiSky } from '@react-three/drei'
 import * as THREE from 'three'
 import Mountains from './Mountains'
-import Ground from './Ground'
-import Path from './Path'
-import Trees from './Trees'
-import Stream from './Stream'
-import RiceField from './RiceField'
+import WorldManager from './biomes/WorldManager'
 import Player from './Player'
 
-function CustomSky() {
-  const skyRef = useRef<THREE.Mesh>(null)
-
+function Cloud({ position }: { position: [number, number, number] }) {
   return (
-    <>
-      <DreiSky 
-        distance={450000}
-        sunPosition={[100, 50, 100]}
-        inclination={0.6}
-        azimuth={0.25}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.8}
-        rayleigh={0.5}
-        turbidity={10}
-      />
-    </>
+    <group position={position}>
+      <mesh>
+        <sphereGeometry args={[4, 12, 12]} />
+        <meshStandardMaterial color="#FFFFFF" transparent opacity={0.6} />
+      </mesh>
+      <mesh position={[3, 0.5, 0]}>
+        <sphereGeometry args={[2.5, 12, 12]} />
+        <meshStandardMaterial color="#FFFFFF" transparent opacity={0.6} />
+      </mesh>
+      <mesh position={[-2.5, 0.3, 0.5]}>
+        <sphereGeometry args={[2, 12, 12]} />
+        <meshStandardMaterial color="#FFFFFF" transparent opacity={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+function SkyClouds({ playerRef }: { playerRef: React.RefObject<THREE.Vector3> }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const targetPos = useRef({ x: 0, z: 20 });
+  
+  useFrame(() => {
+    if (playerRef.current && groupRef.current) {
+      targetPos.current.x += (playerRef.current.x - targetPos.current.x) * 0.05;
+      targetPos.current.z += (playerRef.current.z - targetPos.current.z) * 0.05;
+      groupRef.current.position.set(targetPos.current.x, 0, targetPos.current.z);
+    }
+  });
+  
+  return (
+    <group ref={groupRef}>
+      <Cloud position={[0, 20, 50]} />
+      <Cloud position={[15, 25, 70]} />
+    </group>
+  );
+}
+
+function CustomSky() {
+  return (
+    <DreiSky 
+      distance={450000}
+      sunPosition={[100, 20, 100]}
+      inclination={0.6}
+      azimuth={0.25}
+      mieCoefficient={0.005}
+      mieDirectionalG={0.8}
+      rayleigh={0.5}
+    />
   )
 }
 
 export default function Scene() {
+  const playerPos = useRef(new THREE.Vector3(0, 0, 20));
+
   return (
-    <Canvas
-      shadows
-      dpr={[1, 2]}
-      camera={{ position: [0, 2.2, 25], fov: 50 }}
-      gl={{ 
-        antialias: true,
-      }}
-      style={{ background: '#87CEEB' }}
-    >
-      <Suspense fallback={null}>
-        <Environment preset="park" background={false} />
+    <>
+      <Canvas 
+        shadows 
+        camera={{ position: [0, 3, 25], fov: 60 }}
+      >
+        <color attach="background" args={['#87CEEB']} />
+        <fog attach="fog" args={['#b8d4e8', 5, 35]} />
         
-        <fog attach="fog" args={['#87CEEB', 20, 80]} />
-        
+        <ambientLight intensity={0.7} />
         <directionalLight 
-          position={[50, 30, 10]} 
-          intensity={2.0}
-          color="#FFF5E0"
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={100}
-          shadow-camera-left={-30}
-          shadow-camera-right={30}
-          shadow-camera-top={30}
-          shadow-camera-bottom={-30}
+          position={[50, 80, 25]} 
+          intensity={1.5} 
+          castShadow 
+          color="#fff8e7"
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-far={200}
+          shadow-camera-left={-50}
+          shadow-camera-right={50}
+          shadow-camera-top={50}
+          shadow-camera-bottom={-50}
           shadow-bias={-0.0001}
-          shadow-regular-size={false}
         />
         
-        <hemisphereLight 
-          color="#87CEEB" 
-          groundColor="#5C8A3D" 
-          intensity={0.4} 
-        />
+        <hemisphereLight color="#87CEEB" groundColor="#5C8A3D" intensity={0.6} />
 
         <CustomSky />
-
+        <SkyClouds playerRef={playerPos} />
         <Mountains />
-        <Ground />
-        <Path />
-        <Trees />
-        <Stream />
-        <RiceField />
+        <WorldManager playerPosition={playerPos} />
 
-        {/* 玩家角色 - 第三人称视角 */}
-        <Player position={[0, 0, 20]} />
-
-        <EffectComposer enableNormalPass>
-          <Bloom 
-            intensity={0.3}
-            luminanceThreshold={0.9}
-            luminanceSmoothing={0.95}
-            mipmapBlur
-          />
-          <SSAO 
-            samples={31}
-            radius={5}
-            intensity={20}
-            luminanceInfluence={0.5}
-          />
-        </EffectComposer>
-      </Suspense>
-    </Canvas>
+        <Player 
+          position={[0, 0, 20]} 
+          onPositionChange={(pos) => {
+            playerPos.current.copy(pos);
+          }}
+        />
+      </Canvas>
+    </>
   )
 }

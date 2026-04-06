@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { getTerrainHeight } from './biomes/height'
 
 const MOVE_SPEED = 5
 const JUMP_FORCE = 5
@@ -9,9 +10,10 @@ const TOUCH_LONG_PRESS_THRESHOLD = 200 // ms
 
 interface PlayerProps {
   position?: [number, number, number]
+  onPositionChange?: (pos: THREE.Vector3) => void
 }
 
-export default function Player({ position = [0, 0, 0] }: PlayerProps) {
+export default function Player({ position = [0, 0, 0], onPositionChange }: PlayerProps) {
   const meshRef = useRef<THREE.Group>(null)
   const { camera } = useThree()
 
@@ -24,8 +26,9 @@ export default function Player({ position = [0, 0, 0] }: PlayerProps) {
     jump: false,
   })
 
-  const velocity = useRef(new THREE.Vector3())
-  const canJump = useRef(true)
+  const velocity = useRef(new THREE.Vector3(0, 0, 0));
+  const targetCameraPos = useRef(new THREE.Vector3()); // 持久化目标位置，避免每帧创建新对象
+  const canJump = useRef(true);
 
   // Animation state
   const walkCycle = useRef(0)
@@ -34,9 +37,11 @@ export default function Player({ position = [0, 0, 0] }: PlayerProps) {
   const leftLegRef = useRef<THREE.Group>(null)
   const rightLegRef = useRef<THREE.Group>(null)
 
+  // 初始化角色位置到地面高度
+  const initialY = getTerrainHeight(position[0], position[2]) + 0.2;
+
   // Camera orbit state
-  const cameraRotation = useRef({ theta: 0, phi: 0.001 })
-  const cameraDistance = useRef(8)
+  const cameraRotation = useRef({ theta: Math.PI, phi: 1.4 })
 
   // Touch handling refs
   const touchStartPos = useRef<{ x: number, y: number } | null>(null)
@@ -104,8 +109,9 @@ export default function Player({ position = [0, 0, 0] }: PlayerProps) {
 
         // 滑动时调整相机水平角度(这样可以在移动时调整方向)
         cameraRotation.current.theta -= dx * 0.03
-        // 垂直滑动调整相机高度
-        cameraRotation.current.phi += dy * 0.015
+        // 垂直滑动调整相机高度，反转方向
+        const newPhi = cameraRotation.current.phi - dy * 0.05; // 大幅提高灵敏度
+        cameraRotation.current.phi = Math.max(-1.0, Math.min(2.0, newPhi)); // 极大范围
       }
       lastTouchPos.current = { x: touch.clientX, y: touch.clientY }
     }
@@ -142,11 +148,9 @@ export default function Player({ position = [0, 0, 0] }: PlayerProps) {
 
     // Mouse/Trackpad drag handling
     let isMouseDown = false
-    let mouseStartPos = { x: 0, y: 0 }
 
     const handleMouseDown = (e: MouseEvent) => {
       isMouseDown = true
-      mouseStartPos = { x: e.clientX, y: e.clientY }
       lastTouchPos.current = { x: e.clientX, y: e.clientY }
     }
 
@@ -159,7 +163,8 @@ export default function Player({ position = [0, 0, 0] }: PlayerProps) {
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
         // 拖拽时调整相机角度
         cameraRotation.current.theta -= dx * 0.01
-        cameraRotation.current.phi += dy * 0.01
+        const newPhi = cameraRotation.current.phi - dy * 0.03;
+        cameraRotation.current.phi = Math.max(-1.0, Math.min(2.0, newPhi));
       }
       lastTouchPos.current = { x: e.clientX, y: e.clientY }
     }
@@ -247,30 +252,67 @@ export default function Player({ position = [0, 0, 0] }: PlayerProps) {
     mesh.position.y += velocity.current.y * delta
     mesh.position.z += velocity.current.z * delta
 
-    // Ground collision - shoes sit on ground level
-    if (mesh.position.y < 0.175) {
-      mesh.position.y = 0.175
-      velocity.current.y = 0
-      canJump.current = true
+    // 每帧都更新位置（用于相机平滑跟随）
+    if (onPositionChange) {
+      onPositionChange(mesh.position);
     }
 
-    // Camera follows camera rotation (theta = horizontal, phi = vertical)
-    const phi = cameraRotation.current.phi
-    // Calculate camera height based on phi (0 = ground level, PI/2 = directly above)
-    const cameraY = mesh.position.y + 2 + Math.sin(phi) * 3
+    // 直接用原始高度，不采样周围（防止被山丘干扰）
+    // Offset 1.5 保证绝不穿模（轻微悬浮可接受）
+    const groundY = getTerrainHeight(mesh.position.x, mesh.position.z);
+    // 地面现在是平的(Height=0)，精确计算脚底位置
+    // 脚在组中心下方 0.125 处(缩放后)，要贴地需要 +0.125
+    const playerHeightOffset = 0.13;
+    
+    if (velocity.current.y <= 0.01) { 
+      mesh.position.y = groundY + playerHeightOffset;
+      velocity.current.y = 0;
+      canJump.current = true;
+    }
 
-    // Horizontal position based on theta
-    const cameraX = mesh.position.x + Math.cos(phi) * Math.sin(cameraRotation.current.theta) * 5
-    const cameraZ = mesh.position.z + Math.cos(phi) * Math.cos(cameraRotation.current.theta) * 5
+    // Camera - 球形轨道视角 (Spherical Coordinates)
+    const theta = cameraRotation.current.theta;
+    const phi = cameraRotation.current.phi;
+    const radius = 6; // 相机距离
 
-    camera.position.lerp(new THREE.Vector3(cameraX, cameraY, cameraZ), 0.1)
-    camera.lookAt(mesh.position.x, mesh.position.y, mesh.position.z)
+    // 限制 phi 范围防止相机翻转 (0.1 ~ 1.5 弧度)
+    const clampedPhi = Math.max(0.1, Math.min(2.0, phi));
+    
+    // 球坐标 -> 笛卡尔坐标
+    const cameraX = mesh.position.x + radius * Math.sin(clampedPhi) * Math.sin(theta);
+    const cameraY = mesh.position.y + radius * Math.cos(clampedPhi);
+    const cameraZ = mesh.position.z + radius * Math.sin(clampedPhi) * Math.cos(theta);
+    
+    // 使用 set 而不是 new Vector3，消除 GC 压力
+    targetCameraPos.current.set(cameraX, cameraY, cameraZ);
+    camera.position.lerp(targetCameraPos.current, 0.08);
+    camera.lookAt(mesh.position.x, mesh.position.y + 1.2, mesh.position.z);
   })
 
   return (
-    <group ref={meshRef} position={[position[0], 0.35, position[2]]} scale={0.5}>
+    <group 
+      ref={meshRef} 
+      position={[position[0], initialY, position[2]]} 
+      scale={0.5} 
+      rotation={[0, 0, 0]} // 角色朝前
+    >
       {/*头部*/}
       <group>
+        {/* 头发 - 从头顶向后延伸 */}
+        <mesh position={[0, 1.95, -0.05]} rotation={[0.3, 0, 0]} castShadow>
+          <sphereGeometry args={[0.26, 16, 16]} />
+          <meshStandardMaterial color="#3d2314" />
+        </mesh>
+        <mesh position={[0.12, 1.92, -0.1]} rotation={[0.2, 0.3, 0.2]} castShadow>
+          <sphereGeometry args={[0.12, 8, 8]} />
+          <meshStandardMaterial color="#3d2314" />
+        </mesh>
+        <mesh position={[-0.12, 1.92, -0.1]} rotation={[0.2, -0.3, -0.2]} castShadow>
+          <sphereGeometry args={[0.12, 8, 8]} />
+          <meshStandardMaterial color="#3d2314" />
+        </mesh>
+        
+        {/* 脸部 */}
         <mesh position={[0, 1.8, 0]} castShadow>
           <sphereGeometry args={[0.25, 16, 16]} />
           <meshStandardMaterial color="#ffccaa" />

@@ -1,57 +1,90 @@
-import { useState, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
-import { TILE_SIZE, RENDER_DISTANCE, BIOME_WEIGHTS } from './types'
-import type { BiomeType } from './types'
-import { getBiomeComponent } from './BiomeRegistry'
-
-function getRandomBiome(): BiomeType {
-  const total = Object.values(BIOME_WEIGHTS).reduce((a, b) => a + b, 0)
-  let r = Math.random() * total
-  for (const [k, v] of Object.entries(BIOME_WEIGHTS)) {
-    if (r < v) return k as BiomeType
-    r -= v
-  }
-  return 'grassland'
-}
-
-function createInitialTiles(): Map<string, BiomeType> {
-  const tiles = new Map<string, BiomeType>()
-  for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
-    for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
-      tiles.set(`${x},${z}`, getRandomBiome())
-    }
-  }
-  return tiles
-}
+import { useState, useRef, useCallback } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import { TILE_SIZE, RENDER_DISTANCE } from './types';
+import type { BiomeType } from './types';
+import { getBiomeAt } from './height';
+import { getBiomeComponent } from './BiomeRegistry';
+import WorldDecorations from './WorldDecorations';
 
 export default function WorldManager({ playerPosition }: { playerPosition: THREE.Vector3 | { current: THREE.Vector3 } }) {
-  const [tiles] = useState<Map<string, BiomeType>>(createInitialTiles())
-  const lastTile = useRef({ x: 0, z: 0 })
+  const [tiles, setTiles] = useState<Map<string, BiomeType>>(() => {
+    const initial = new Map<string, BiomeType>();
+    for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
+      for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
+        initial.set(`${x},${z}`, getBiomeAt(x * TILE_SIZE, z * TILE_SIZE));
+      }
+    }
+    return initial;
+  });
+
+  const lastTilePos = useRef({ x: 0, z: 0 });
+  // 使用时间戳节流，而不是帧计数
+  const lastUpdateTime = useRef(0);
+
+  const updateTiles = useCallback((centerX: number, centerZ: number) => {
+    setTiles((prevTiles) => {
+      const newTiles = new Map(prevTiles);
+      let hasChanges = false;
+      
+      for (let x = centerX - RENDER_DISTANCE; x <= centerX + RENDER_DISTANCE; x++) {
+        for (let z = centerZ - RENDER_DISTANCE; z <= centerZ + RENDER_DISTANCE; z++) {
+          const key = `${x},${z}`;
+          if (!newTiles.has(key)) {
+            newTiles.set(key, getBiomeAt(x * TILE_SIZE, z * TILE_SIZE));
+            hasChanges = true;
+          }
+        }
+      }
+
+      if (!hasChanges) return prevTiles;
+
+      // 清理远处的地块（减少延迟，让地块更早出现）
+      for (const key of newTiles.keys()) {
+        const [tx, tz] = key.split(',').map(Number);
+        if (Math.abs(tx - centerX) > RENDER_DISTANCE + 1 || Math.abs(tz - centerZ) > RENDER_DISTANCE + 1) {
+          newTiles.delete(key);
+        }
+      }
+
+      return newTiles;
+    });
+  }, []);
 
   useFrame(() => {
-    const pos = (playerPosition as any).current || playerPosition
-    const tileX = Math.floor(pos.x / TILE_SIZE)
-    const tileZ = Math.floor(pos.z / TILE_SIZE)
+    const pos = (playerPosition as any).current || playerPosition;
+    const tileX = Math.floor(pos.x / TILE_SIZE);
+    const tileZ = Math.floor(pos.z / TILE_SIZE);
 
-    if (tileX !== lastTile.current.x || tileZ !== lastTile.current.z) {
-      lastTile.current = { x: tileX, z: tileZ }
+    // 时间节流：每 1 秒检查一次
+    const now = Date.now();
+    if (now - lastUpdateTime.current < 1000) return;
+    
+    // 距离超过 2 格才更新
+    if (Math.abs(tileX - lastTilePos.current.x) >= 2 || Math.abs(tileZ - lastTilePos.current.z) >= 2) {
+      lastTilePos.current = { x: tileX, z: tileZ };
+      lastUpdateTime.current = now;
+      updateTiles(tileX, tileZ);
     }
-  })
+  });
 
   return (
-    <group name="terrain">
-      {Array.from(tiles.entries()).map(([key, type]) => {
-        const [x, z] = key.split(',').map(Number)
-        const BiomeComp = getBiomeComponent(type)
-        return (
-          <BiomeComp 
-            key={key} 
-            position={[x * TILE_SIZE, 0, z * TILE_SIZE]} 
-            type={type} 
-          />
-        )
-      })}
+    <group name="world">
+      <group name="terrain">
+        {Array.from(tiles.entries()).map(([key, type]) => {
+          const [x, z] = key.split(',').map(Number);
+          const BiomeComponent = getBiomeComponent(type);
+          return (
+            <BiomeComponent 
+              key={key} 
+              position={[x * TILE_SIZE, 0, z * TILE_SIZE]} 
+              type={type}
+              fadeIn={true}
+            />
+          );
+        })}
+      </group>
+      <WorldDecorations tiles={tiles} />
     </group>
-  )
+  );
 }

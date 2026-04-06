@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, memo } from 'react'
 import * as THREE from 'three'
 
 // 创建树冠纹理
@@ -33,7 +33,7 @@ function createFoliageTexture() {
   return texture
 }
 
-function Tree({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+export const Tree = memo(function Tree({ position, scale = 1 }: { position: [number, number, number]; scale?: number }): React.ReactElement {
   const foliageTexture = useRef<THREE.Texture | null>(null)
   if (!foliageTexture.current) {
     foliageTexture.current = createFoliageTexture()
@@ -41,7 +41,7 @@ function Tree({ position, scale = 1 }: { position: [number, number, number]; sca
   
   return (
     <group position={position} scale={scale}>
-      {/* 树干 - 更自然的形状 */}
+      {/* 树干 */}
       <mesh position={[0, 1, 0]} castShadow>
         <cylinderGeometry args={[0.12, 0.22, 2.5, 12]} />
         <meshStandardMaterial 
@@ -97,10 +97,10 @@ function Tree({ position, scale = 1 }: { position: [number, number, number]; sca
         />
       </mesh>
     </group>
-  )
-}
+  );
+});
 
-function Bush({ position }: { position: [number, number, number] }) {
+export const Bush = memo(function Bush({ position }: { position: [number, number, number] }): React.ReactElement {
   const foliageTexture = useRef<THREE.Texture | null>(null)
   if (!foliageTexture.current) {
     foliageTexture.current = createFoliageTexture()
@@ -131,8 +131,8 @@ function Bush({ position }: { position: [number, number, number] }) {
         />
       </mesh>
     </group>
-  )
-}
+  );
+});
 
 export default function Trees() {
   return (

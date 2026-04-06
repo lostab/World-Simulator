@@ -1,8 +1,8 @@
-export default function StreamTile({ position }: { position: [number, number, number] }) {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={position} receiveShadow userData={{ biomeType: 'stream' }}>
-      <planeGeometry args={[20, 20]} />
-      <meshStandardMaterial color="#4a90d9" roughness={0.3} metalness={0.1} />
-    </mesh>
-  )
-}
+import { memo } from 'react';
+import { BaseBiomeTile } from '../BaseBiomeTile';
+
+const StreamTile = memo(function StreamTile({ position }: { position: [number, number, number] }) {
+  return <BaseBiomeTile position={position} color="#4fc3f7" />;
+});
+
+export default StreamTile;
