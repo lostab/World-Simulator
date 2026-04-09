@@ -1,62 +1,69 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Sky as DreiSky } from '@react-three/drei'
 import * as THREE from 'three'
 import Mountains from './Mountains'
 import WorldManager from './biomes/WorldManager'
 import Player from './Player'
+import { Bird } from './biomes/Bird'
+import { AnimalManager } from './biomes/AnimalManager'
 
-function Cloud({ position }: { position: [number, number, number] }) {
+function FadeIn() {
+  const [opacity, setOpacity] = useState(1);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setOpacity(prev => {
+        if (prev <= 0) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 0.05;
+      });
+    }, 50);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <group position={position}>
-      <mesh>
-        <sphereGeometry args={[4, 12, 12]} />
-        <meshStandardMaterial color="#FFFFFF" transparent opacity={0.6} />
-      </mesh>
-      <mesh position={[3, 0.5, 0]}>
-        <sphereGeometry args={[2.5, 12, 12]} />
-        <meshStandardMaterial color="#FFFFFF" transparent opacity={0.6} />
-      </mesh>
-      <mesh position={[-2.5, 0.3, 0.5]}>
-        <sphereGeometry args={[2, 12, 12]} />
-        <meshStandardMaterial color="#FFFFFF" transparent opacity={0.6} />
-      </mesh>
-    </group>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: '#b8d4e8',
+      opacity: opacity,
+      pointerEvents: 'none',
+      zIndex: 100,
+      transition: 'opacity 0.1s ease'
+    }} />
   );
 }
 
-function SkyClouds({ playerRef }: { playerRef: React.RefObject<THREE.Vector3> }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const targetPos = useRef({ x: 0, z: 20 });
-  
+function ShadowLight({ playerPos }: { playerPos: THREE.Vector3 }) {
+  const lightRef = useRef<THREE.DirectionalLight>(null);
   useFrame(() => {
-    if (playerRef.current && groupRef.current) {
-      targetPos.current.x += (playerRef.current.x - targetPos.current.x) * 0.05;
-      targetPos.current.z += (playerRef.current.z - targetPos.current.z) * 0.05;
-      groupRef.current.position.set(targetPos.current.x, 0, targetPos.current.z);
+    if (lightRef.current) {
+      lightRef.current.position.set(playerPos.x, 50, playerPos.z);
+      lightRef.current.target.position.set(playerPos.x, 0, playerPos.z);
+      lightRef.current.target.updateMatrixWorld();
     }
   });
-  
   return (
-    <group ref={groupRef}>
-      <Cloud position={[0, 20, 50]} />
-      <Cloud position={[15, 25, 70]} />
-    </group>
-  );
-}
-
-function CustomSky() {
-  return (
-    <DreiSky 
-      distance={450000}
-      sunPosition={[100, 20, 100]}
-      inclination={0.6}
-      azimuth={0.25}
-      mieCoefficient={0.005}
-      mieDirectionalG={0.8}
-      rayleigh={0.5}
+    <directionalLight
+      ref={lightRef}
+      position={[0, 50, 0]}
+      intensity={1.5}
+      castShadow
+      color="#fff8e7"
+      shadow-mapSize={[2048, 2048]}
+      shadow-camera-far={200}
+      shadow-camera-left={-40}
+      shadow-camera-right={40}
+      shadow-camera-top={40}
+      shadow-camera-bottom={-40}
+      shadow-bias={-0.0001}
     />
-  )
+  );
 }
 
 export default function Scene() {
@@ -64,34 +71,27 @@ export default function Scene() {
 
   return (
     <>
-      <Canvas 
-        shadows 
-        camera={{ position: [0, 3, 25], fov: 60 }}
+      <FadeIn />
+      <Canvas
+        shadows
+        camera={{ position: [0, 10, 30], fov: 50 }}
+        onCreated={({ gl }) => {
+          gl.setClearColor('#b8d4e8');
+        }}
       >
-        <color attach="background" args={['#87CEEB']} />
-        <fog attach="fog" args={['#b8d4e8', 5, 35]} />
-        
+        <DreiSky sunPosition={[100, 20, 100]} />
         <ambientLight intensity={0.7} />
-        <directionalLight 
-          position={[50, 80, 25]} 
-          intensity={1.5} 
-          castShadow 
-          color="#fff8e7"
-          shadow-mapSize={[2048, 2048]}
-          shadow-camera-far={200}
-          shadow-camera-left={-50}
-          shadow-camera-right={50}
-          shadow-camera-top={50}
-          shadow-camera-bottom={-50}
-          shadow-bias={-0.0001}
-        />
-        
+        <ShadowLight playerPos={playerPos.current} />
         <hemisphereLight color="#87CEEB" groundColor="#5C8A3D" intensity={0.6} />
+        <fog args={['#b8d4e8', 5, 45]} />
 
-        <CustomSky />
-        <SkyClouds playerRef={playerPos} />
         <Mountains />
         <WorldManager playerPosition={playerPos} />
+        <AnimalManager />
+
+        {[...Array(3)].map((_, i) => (
+          <Bird key={`bird-${i}`} playerPos={playerPos.current} />
+        ))}
 
         <Player 
           position={[0, 0, 20]} 
@@ -101,5 +101,5 @@ export default function Scene() {
         />
       </Canvas>
     </>
-  )
+  );
 }

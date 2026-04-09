@@ -2,6 +2,9 @@ import { useMemo } from 'react';
 import { TILE_SIZE } from './types';
 import { Tree } from '../Trees';
 import { memo } from 'react';
+import { Animal } from './Animal';
+import { DistanceFadeGroup } from './DistanceFadeGroup';
+import * as THREE from 'three';
 
 function pseudoRandom(seed: number) {
   const x = Math.sin(seed) * 10000;
@@ -47,7 +50,7 @@ const Rock = memo(function Rock({ position, scale }: { position: [number, number
   );
 });
 
-export default function WorldDecorations({ tiles }: { tiles: Map<string, any> }) {
+export default function WorldDecorations({ tiles, playerPos }: { tiles: Map<string, any>, playerPos: THREE.Vector3 }) {
   const decorations = useMemo(() => {
     const items: any[] = [];
     const entries = Array.from(tiles.entries());
@@ -62,12 +65,24 @@ export default function WorldDecorations({ tiles }: { tiles: Map<string, any> })
       const flowerCount = type === 'meadow' || type === 'grassland' ? Math.floor(pseudoRandom(seed + 2) * 4) + 1 : 0;
       const grassCount = type === 'meadow' || type === 'grassland' ? Math.floor(pseudoRandom(seed + 3) * 4) + 1 : 0;
       const rockCount = type === 'rocky' ? 1 : 0;
+      const animalCount = pseudoRandom(seed + 0.5) < 0.1 ? 1 : 0;
       
       for (let i = 0; i < treeCount; i++) {
         const rx = (pseudoRandom(seed + i * 1.1) - 0.5) * 15;
         const rz = (pseudoRandom(seed + i * 2.2) - 0.5) * 15;
         const scale = 0.8 + pseudoRandom(seed + i * 3.3) * 0.5;
-        items.push(<Tree key={`tree-${key}-${i}`} position={[worldX + rx, 0, worldZ + rz]} scale={scale} />);
+        const pos: [number, number, number] = [worldX + rx, 0, worldZ + rz];
+        items.push(
+          <DistanceFadeGroup 
+            key={`fade-tree-${key}-${i}`} 
+            playerPos={playerPos} 
+            position={pos}
+            minDistance={10}
+            maxDistance={45}
+          >
+            <Tree position={[0, 0, 0]} scale={scale} />
+          </DistanceFadeGroup>
+        );
       }
 
       for (let i = 0; i < flowerCount; i++) {
@@ -75,20 +90,71 @@ export default function WorldDecorations({ tiles }: { tiles: Map<string, any> })
         const rz = (pseudoRandom(seed + i * 5.5) - 0.5) * 15;
         const colors = ['#FFC0CB', '#FFFF00', '#FFFFFF', '#E6E6FA', '#FFB6C1'];
         const color = colors[Math.floor(pseudoRandom(seed + i * 6.6) * colors.length)];
-        items.push(<Flower key={`flower-${key}-${i}`} position={[worldX + rx, 0, worldZ + rz]} color={color} />);
+        const pos: [number, number, number] = [worldX + rx, 0, worldZ + rz];
+        items.push(
+          <DistanceFadeGroup 
+            key={`fade-flower-${key}-${i}`} 
+            playerPos={playerPos} 
+            position={pos}
+            minDistance={10}
+            maxDistance={45}
+          >
+            <Flower position={[0, 0, 0]} color={color} />
+          </DistanceFadeGroup>
+        );
       }
 
       for (let i = 0; i < grassCount; i++) {
         const rx = (pseudoRandom(seed + i * 7.7) - 0.5) * 15;
         const rz = (pseudoRandom(seed + i * 8.8) - 0.5) * 15;
-        items.push(<Grass key={`grass-${key}-${i}`} position={[worldX + rx, 0, worldZ + rz]} />);
+        const pos: [number, number, number] = [worldX + rx, 0, worldZ + rz];
+        items.push(
+          <DistanceFadeGroup 
+            key={`fade-grass-${key}-${i}`} 
+            playerPos={playerPos} 
+            position={pos}
+            minDistance={10}
+            maxDistance={45}
+          >
+            <Grass position={[0, 0, 0]} />
+          </DistanceFadeGroup>
+        );
       }
 
       for (let i = 0; i < rockCount; i++) {
         const rx = (pseudoRandom(seed + i * 9.9) - 0.5) * 15;
         const rz = (pseudoRandom(seed + i * 10.1) - 0.5) * 15;
         const scale = 0.5 + pseudoRandom(seed + i * 11.1) * 1.0;
-        items.push(<Rock key={`rock-${key}-${i}`} position={[worldX + rx, 0.2, worldZ + rz]} scale={scale} />);
+        const pos: [number, number, number] = [worldX + rx, 0.2, worldZ + rz];
+        items.push(
+          <DistanceFadeGroup 
+            key={`fade-rock-${key}-${i}`} 
+            playerPos={playerPos} 
+            position={pos}
+            minDistance={10}
+            maxDistance={45}
+          >
+            <Rock position={[0, 0, 0]} scale={scale} />
+          </DistanceFadeGroup>
+        );
+      }
+
+      if (animalCount > 0) {
+        const rx = (pseudoRandom(seed + 0.6) - 0.5) * 15;
+        const rz = (pseudoRandom(seed + 0.7) - 0.5) * 15;
+        const type = pseudoRandom(seed + 0.8) > 0.5 ? 'crab' : 'deer';
+        const pos: [number, number, number] = [worldX + rx, 0, worldZ + rz];
+        items.push(
+          <DistanceFadeGroup 
+            key={`fade-animal-${key}`} 
+            playerPos={playerPos} 
+            position={pos}
+            minDistance={10}
+            maxDistance={45}
+          >
+            <Animal position={[0, 0, 0]} type={type} />
+          </DistanceFadeGroup>
+        );
       }
     }
     return items;

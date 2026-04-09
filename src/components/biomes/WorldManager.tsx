@@ -19,7 +19,6 @@ export default function WorldManager({ playerPosition }: { playerPosition: THREE
   });
 
   const lastTilePos = useRef({ x: 0, z: 0 });
-  // 使用时间戳节流，而不是帧计数
   const lastUpdateTime = useRef(0);
 
   const updateTiles = useCallback((centerX: number, centerZ: number) => {
@@ -39,7 +38,6 @@ export default function WorldManager({ playerPosition }: { playerPosition: THREE
 
       if (!hasChanges) return prevTiles;
 
-      // 清理远处的地块（减少延迟，让地块更早出现）
       for (const key of newTiles.keys()) {
         const [tx, tz] = key.split(',').map(Number);
         if (Math.abs(tx - centerX) > RENDER_DISTANCE + 1 || Math.abs(tz - centerZ) > RENDER_DISTANCE + 1) {
@@ -56,17 +54,17 @@ export default function WorldManager({ playerPosition }: { playerPosition: THREE
     const tileX = Math.floor(pos.x / TILE_SIZE);
     const tileZ = Math.floor(pos.z / TILE_SIZE);
 
-    // 时间节流：每 1 秒检查一次
     const now = Date.now();
     if (now - lastUpdateTime.current < 1000) return;
     
-    // 距离超过 2 格才更新
     if (Math.abs(tileX - lastTilePos.current.x) >= 2 || Math.abs(tileZ - lastTilePos.current.z) >= 2) {
       lastTilePos.current = { x: tileX, z: tileZ };
       lastUpdateTime.current = now;
       updateTiles(tileX, tileZ);
     }
   });
+
+  const pos = (playerPosition as any).current || playerPosition;
 
   return (
     <group name="world">
@@ -79,12 +77,11 @@ export default function WorldManager({ playerPosition }: { playerPosition: THREE
               key={key} 
               position={[x * TILE_SIZE, 0, z * TILE_SIZE]} 
               type={type}
-              fadeIn={true}
             />
           );
         })}
       </group>
-      <WorldDecorations tiles={tiles} />
+      <WorldDecorations playerPos={pos} tiles={tiles} />
     </group>
   );
 }
