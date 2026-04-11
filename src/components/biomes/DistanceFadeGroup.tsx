@@ -1,76 +1,94 @@
-import { useRef, useEffect } from 'react';
+import React, { useRef, useLayoutEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { positionStore } from './positionStore';
 
 interface DistanceFadeGroupProps {
   children: React.ReactNode;
-  playerPos: THREE.Vector3;
   position?: [number, number, number];
+  staticWorldPos?: THREE.Vector3;
   minDistance?: number;
   maxDistance?: number;
-  fadeScale?: boolean;
 }
 
-export function DistanceFadeGroup({ 
-  children, 
-  playerPos, 
+export function DistanceFadeGroup({
+  children,
   position = [0,0,0],
-  minDistance = 10, 
-  maxDistance = 45,
-  fadeScale = true 
+  staticWorldPos,
+  minDistance = 30,
+  maxDistance = 150,
 }: DistanceFadeGroupProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const worldPos = useRef(new THREE.Vector3());
+  const cachedMaterials = useRef<THREE.Material[]>([]);
+  const frameCount = useRef(0);
+  const currentOpacity = useRef(0);
 
-  useEffect(() => {
+  // 核心修复：使用 useLayoutEffect 同步计算初始透明度
+  // 这样在浏览器绘制之前，组件就已经处于正确的透明度，不会出现闪现
+  useLayoutEffect(() => {
     if (groupRef.current) {
+      const mats: THREE.Material[] = [];
       groupRef.current.traverse((obj) => {
         if ((obj as THREE.Mesh).isMesh) {
           const mesh = obj as THREE.Mesh;
           if (mesh.material) {
-            const mat = mesh.material as THREE.MeshStandardMaterial;
-            mat.transparent = true;
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach(m => { (m as any).transparent = true; mats.push(m); });
+            } else {
+              (mesh.material as any).transparent = true;
+              mats.push(mesh.material);
+            }
           }
         }
       });
+      cachedMaterials.current = mats;
+
+      // 计算初始透明度
+      const initialPos = staticWorldPos || new THREE.Vector3(...position);
+      const distance = initialPos.distanceTo(positionStore.playerPos);
+      let initialOpacity = 1 - (distance - minDistance) / (maxDistance - minDistance);
+      initialOpacity = Math.max(0, Math.min(1, initialOpacity));
+      currentOpacity.current = initialOpacity;
+
+      // 立即显示组件
+      if (groupRef.current) {
+        groupRef.current.visible = true;
+      }
     }
-  }, []);
+  }, [position, staticWorldPos, minDistance, maxDistance]);
 
   useFrame(() => {
-    if (!groupRef.current) return;
+    if (!groupRef.current || cachedMaterials.current.length === 0) return;
 
-    const distance = groupRef.current.position.distanceTo(playerPos);
+    frameCount.current++;
+    if (frameCount.current % 3 !== 0) return;
 
-    let progress = 1;
-    if (distance > minDistance) {
-      progress = 1 - (distance - minDistance) / (maxDistance - minDistance);
-    }
-    progress = Math.max(0, Math.min(1, progress));
-
-    // 核心修复：物理级隐藏
-    // 当物体完全超出 maxDistance 时，直接将其从渲染管线中剔除，彻底消除视觉残留
-    groupRef.current.visible = progress > 0;
-
-    if (progress <= 0) return; // 如果不可见，无需执行后续的透明度和缩放计算
-
-    // 1. 颜色渐进：线性从 0 到 1
-    groupRef.current.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh) {
-        const mesh = obj as THREE.Mesh;
-        if (mesh.material) {
-          const mat = mesh.material as THREE.MeshStandardMaterial;
-          mat.opacity = progress;
-        }
+    try {
+      const playerPos = positionStore.playerPos;
+      if (staticWorldPos) {
+        worldPos.current.copy(staticWorldPos);
+      } else {
+        groupRef.current.getWorldPosition(worldPos.current);
       }
-    });
 
-    // 2. 大小渐进
-    if (fadeScale) {
-      const minScale = 0.2;
-      const currentScale = minScale + (1 - minScale) * progress;
-      groupRef.current.scale.setScalar(currentScale);
-    } else {
-      groupRef.current.scale.setScalar(1);
-    }
+      const distance = worldPos.current.distanceTo(playerPos);
+      let targetOpacity = 1 - (distance - minDistance) / (maxDistance - minDistance);
+      targetOpacity = Math.max(0, Math.min(1, targetOpacity));
+
+      const lerpFactor = 0.05;
+      currentOpacity.current += (targetOpacity - currentOpacity.current) * lerpFactor;
+
+      if (currentOpacity.current > 0.01) {
+        groupRef.current.visible = true;
+        const materials = cachedMaterials.current;
+        for (let i = 0; i < materials.length; i++) {
+          (materials[i] as any).opacity = currentOpacity.current;
+        }
+      } else {
+        groupRef.current.visible = false;
+      }
+    } catch (e) {}
   });
 
   return (

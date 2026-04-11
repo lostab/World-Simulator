@@ -4,8 +4,8 @@ import * as THREE from 'three'
 import { getTerrainHeight } from './biomes/height'
 
 const MOVE_SPEED = 5
-const JUMP_FORCE = 5
-const GRAVITY = 15
+const JUMP_FORCE = 4.5
+const GRAVITY = 12
 const TOUCH_LONG_PRESS_THRESHOLD = 200 // ms
 
 interface PlayerProps {
@@ -26,8 +26,11 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
   })
 
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
+  const isAutoWalking = useRef(false);
   const targetCameraPos = useRef(new THREE.Vector3());
+  const currentLookAtPos = useRef(new THREE.Vector3());
   const canJump = useRef(true);
+  const hasInitializedCamera = useRef(false);
 
   const walkCycle = useRef(0)
   const leftArmRef = useRef<THREE.Group>(null)
@@ -147,11 +150,17 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
       isMouseDown = false
     }
 
+    const handleDoubleClick = () => {
+      isAutoWalking.current = !isAutoWalking.current;
+      console.log(`[Player] Auto-walk: ${isAutoWalking.current}`);
+    };
+
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
     window.addEventListener('mousedown', handleMouseDown)
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('dblclick', handleDoubleClick)
     window.addEventListener('touchstart', handleTouchStart, { passive: false })
     window.addEventListener('touchmove', handleTouchMove, { passive: false })
     window.addEventListener('touchend', handleTouchEnd)
@@ -159,6 +168,10 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('dblclick', handleDoubleClick)
       window.removeEventListener('mousedown', handleMouseDown)
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
@@ -178,8 +191,8 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
     forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current.theta)
     right.crossVectors(forward, new THREE.Vector3(0, 1, 0))
 
-    const isMovingForward = keys.current.forward
-    const isMovingBackward = keys.current.backward
+    const isMovingForward = keys.current.forward || isAutoWalking.current;
+    const isMovingBackward = keys.current.backward;
     
     if (isMovingForward) moveDir.add(forward)
     if (isMovingBackward) moveDir.add(forward.clone().negate().multiplyScalar(0.5))
@@ -218,7 +231,7 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
 
     const groundY = getTerrainHeight(mesh.position.x, mesh.position.z);
     const playerHeightOffset = 0.13;
-    if (velocity.current.y <= 0.01) { 
+    if (mesh.position.y <= groundY + playerHeightOffset + 0.05 && velocity.current.y <= 0) { 
       mesh.position.y = groundY + playerHeightOffset;
       velocity.current.y = 0;
       canJump.current = true;
@@ -228,12 +241,26 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
     const phi = cameraRotation.current.phi;
     const radius = 6;
     const clampedPhi = Math.max(0.1, Math.min(2.0, phi));
+    
     const cameraX = mesh.position.x + radius * Math.sin(clampedPhi) * Math.sin(theta);
     const cameraY = mesh.position.y + radius * Math.cos(clampedPhi);
     const cameraZ = mesh.position.z + radius * Math.sin(clampedPhi) * Math.cos(theta);
+    
     targetCameraPos.current.set(cameraX, cameraY, cameraZ);
-    camera.position.lerp(targetCameraPos.current, 0.08);
-    camera.lookAt(mesh.position.x, mesh.position.y + 1.2, mesh.position.z);
+
+    const idealLookAtPos = new THREE.Vector3(mesh.position.x, mesh.position.y + 1.2, mesh.position.z);
+
+    // 核心修复：首帧强制同步位置和注视点，消除进入时的视角晃动
+    if (!hasInitializedCamera.current) {
+      camera.position.copy(targetCameraPos.current);
+      currentLookAtPos.current.copy(idealLookAtPos);
+      camera.lookAt(currentLookAtPos.current);
+      hasInitializedCamera.current = true;
+    } else {
+      camera.position.lerp(targetCameraPos.current, 0.08);
+      currentLookAtPos.current.lerp(idealLookAtPos, 0.1);
+      camera.lookAt(currentLookAtPos.current);
+    }
   })
 
   return (
@@ -328,7 +355,7 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
         </mesh>
       </group>
 
-      {/*右臂 - 修正 Z-Fighting: 手部宽度 0.13 < 袖子 0.14 */}
+      {/*右臂 - 修复：将手部颜色从蓝色 #4a90d9 改回皮肤色 #ffccaa */}
       <group ref={rightArmRef} position={[-0.38, 1.2, 0]}>
         <mesh position={[0, -0.25, 0]} castShadow>
           <boxGeometry args={[0.14, 0.5, 0.14]} />
@@ -353,7 +380,7 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
       </group>
 
       {/*右腿 */}
-      <group ref={rightLegRef} position={[-0.1, 0.5, 0]}>
+      <group ref={rightLegRef} position={[-0.1, 0.5, 0]} castShadow>
         <mesh position={[0, -0.35, 0]} castShadow>
           <boxGeometry args={[0.12, 0.65, 0.12]} />
           <meshStandardMaterial color="#5c4033" />

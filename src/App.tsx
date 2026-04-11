@@ -1,5 +1,7 @@
 import Scene from './components/Scene'
 
+console.log('[App] App component loaded');
+
 function App() {
   return (
     <div style={{ 

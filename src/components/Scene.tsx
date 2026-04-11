@@ -1,12 +1,15 @@
 import { useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Sky as DreiSky } from '@react-three/drei'
 import * as THREE from 'three'
 import Mountains from './Mountains'
+import Trees from './Trees'
 import WorldManager from './biomes/WorldManager'
 import Player from './Player'
 import { Bird } from './biomes/Bird'
 import { AnimalManager } from './biomes/AnimalManager'
+import CloudSystem from './biomes/CloudSystem'
+
+console.log('[Scene] Scene component loaded');
 
 function FadeIn() {
   const [opacity, setOpacity] = useState(1);
@@ -67,6 +70,7 @@ function ShadowLight({ playerPos }: { playerPos: THREE.Vector3 }) {
 }
 
 export default function Scene() {
+  console.log('[Scene] Scene function called');
   const playerPos = useRef(new THREE.Vector3(0, 0, 20));
 
   return (
@@ -77,15 +81,23 @@ export default function Scene() {
         camera={{ position: [0, 10, 30], fov: 50 }}
         onCreated={({ gl }) => {
           gl.setClearColor('#b8d4e8');
+          gl.autoClearColor = true;
         }}
       >
-        <DreiSky sunPosition={[100, 20, 100]} />
-        <ambientLight intensity={0.7} />
+        <ambientLight intensity={1.0} />
         <ShadowLight playerPos={playerPos.current} />
         <hemisphereLight color="#87CEEB" groundColor="#5C8A3D" intensity={0.6} />
-        <fog args={['#b8d4e8', 5, 45]} />
+        <fog args={['#b8d4e8', 10, 150]} />
+
+        {/* 关键修复：增加一个巨型沙地底盘，彻底终结所有蓝色地块漏洞 */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
+          <planeGeometry args={[5000, 5000]} />
+          <meshLambertMaterial color="#eeddbb" />
+        </mesh>
 
         <Mountains />
+        <CloudSystem playerPos={playerPos.current} />
+        <Trees />
         <WorldManager playerPosition={playerPos} />
         <AnimalManager />
 
