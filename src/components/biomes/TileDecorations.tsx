@@ -10,8 +10,9 @@ import { positionStore } from './positionStore';
 interface DecorationItem {
   pos: [number, number, number];
   worldPos: THREE.Vector3;
-  type: 'tree' | 'rock' | 'animal';
+  type: 'tree' | 'rock' | 'animal' | 'terrain';
   animalType?: 'crab' | 'deer';
+  terrainType?: 'circle-blue' | 'square-green';
   scale: number;
   rotation: number;
 }
@@ -77,6 +78,22 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
         rotation: pseudoRandom(tileKey, i + 130) * Math.PI * 2,
       });
     }
+    
+    // 新增：地形装饰物生成逻辑
+    if (pseudoRandom(tileKey, 200) < 0.3) { // 30% 概率生成地形覆盖
+      const tx = (pseudoRandom(tileKey, 210) - 0.5) * 10;
+      const tz = (pseudoRandom(tileKey, 220) - 0.5) * 10;
+      const tType = pseudoRandom(tileKey, 230) > 0.5 ? 'circle-blue' : 'square-green';
+      items.push({
+        pos: [tx, 0.01, tz], // 稍微抬高防止闪烁
+        worldPos: new THREE.Vector3(tileWorldX + tx, 0.01, tileWorldZ + tz),
+        type: 'terrain',
+        terrainType: tType,
+        scale: 2 + pseudoRandom(tileKey, 240) * 4,
+        rotation: pseudoRandom(tileKey, 250) * Math.PI * 2,
+      });
+    }
+
     if (pseudoRandom(tileKey, 50) < 0.03) {
       const rx = (pseudoRandom(tileKey, 60) - 0.5) * 14;
       const rz = (pseudoRandom(tileKey, 70) - 0.5) * 14;
@@ -250,18 +267,42 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
         <primitive object={rockMeshRef.current} />
       )}
       <group>
-        {decorations.map((item, idx) => (
-          item.type === 'animal' && (
-            <group 
-              key={`${tileKey}-animal-${idx}`} 
-              position={item.pos} 
-              rotation={[0, item.rotation, 0]} 
-              scale={item.scale}
-            >
-              <Animal position={[0, 0, 0]} type={item.animalType || 'deer'} />
-            </group>
-          )
-        ))}
+        {decorations.map((item, idx) => {
+          if (item.type === 'animal') {
+            return (
+              <group 
+                key={`${tileKey}-animal-${idx}`} 
+                position={item.pos} 
+                rotation={[0, item.rotation, 0]} 
+                scale={item.scale}
+              >
+                <Animal position={[0, 0, 0]} type={item.animalType || 'deer'} />
+              </group>
+            );
+          }
+          if (item.type === 'terrain') {
+            return (
+              <mesh 
+                key={`${tileKey}-terrain-${idx}`} 
+                position={item.pos} 
+                rotation={[-Math.PI / 2, 0, item.rotation]} 
+                scale={[item.scale, item.scale, 1]}
+              >
+                {item.terrainType === 'circle-blue' ? (
+                  <circleGeometry args={[1, 32]} />
+                ) : (
+                  <planeGeometry args={[1, 1]} />
+                )}
+                <meshStandardMaterial 
+                  color={item.terrainType === 'circle-blue' ? '#0288d1' : '#4CAF50'} 
+                  transparent 
+                  opacity={0.8} 
+                />
+              </mesh>
+            );
+          }
+          return null;
+        })}
       </group>
     </group>
   );

@@ -24,7 +24,7 @@ const Tile = memo(function Tile({ tileKey, type }: { tileKey: string, type: Biom
   
   return (
     <group position={worldPos}>
-      <BiomeComponent type={type} position={worldPos} />
+      {type === 'sand' && <BiomeComponent type={type} position={worldPos} />}
       <TileDecorations tileKey={tileKey} type={type} />
     </group>
   );
