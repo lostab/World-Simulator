@@ -8,23 +8,23 @@ import { getBiomeComponent } from './BiomeRegistry';
 import TileDecorations from './TileDecorations';
 import { positionStore } from './positionStore';
 
-// 将初始加载半径大幅缩小，确保进入场景时瞬间完成
-const STARTUP_DISTANCE = 5; 
-const RENDER_DISTANCE = 26; 
+// 将初始加载半径大幅缩小,确保进入场景时瞬间完成
+const STARTUP_DISTANCE = 5;
+const RENDER_DISTANCE = 26;
 
 const Tile = memo(function Tile({ tileKey, type }: { tileKey: string, type: BiomeType }) {
   if (!tileKey || typeof tileKey !== 'string') return null;
   const parts = tileKey.split(',');
   if (parts.length !== 2) return null;
-  
+
   const tx = Number(parts[0]);
   const tz = Number(parts[1]);
   const worldPos: [number, number, number] = [tx * TILE_SIZE, 0, tz * TILE_SIZE];
-  const BiomeComponent = getBiomeComponent(type) || (() => null);
-  
+  const SandComponent = getBiomeComponent('sand') || (() => null);
+
   return (
     <group position={worldPos}>
-      {type === 'sand' && <BiomeComponent type={type} position={worldPos} />}
+      <SandComponent type="sand" position={[0, 0, 0]} />
       <TileDecorations tileKey={tileKey} type={type} />
     </group>
   );
@@ -33,7 +33,7 @@ const Tile = memo(function Tile({ tileKey, type }: { tileKey: string, type: Biom
 export default function WorldManager({ playerPosition }: { playerPosition: THREE.Vector3 | { current: THREE.Vector3 } }) {
   const [tiles, setTiles] = useState<Map<string, BiomeType>>(() => {
     const initial = new Map<string, BiomeType>();
-    // 启动时仅加载极小范围，消除进入卡顿
+    // 启动时仅加载极小范围,消除进入卡顿
     for (let x = -STARTUP_DISTANCE; x <= STARTUP_DISTANCE; x++) {
       for (let z = -STARTUP_DISTANCE; z <= STARTUP_DISTANCE; z++) {
         const key = `${x},${z}`;
@@ -52,7 +52,7 @@ export default function WorldManager({ playerPosition }: { playerPosition: THREE
     setTiles((prevTiles) => {
       const newTiles = new Map(prevTiles);
       const toAdd: Array<{key: string, type: BiomeType}> = [];
-      
+
       for (let x = centerX - RENDER_DISTANCE; x <= centerX + RENDER_DISTANCE; x++) {
         for (let z = centerZ - RENDER_DISTANCE; z <= centerZ + RENDER_DISTANCE; z++) {
           const key = `${x},${z}`;
@@ -87,7 +87,7 @@ export default function WorldManager({ playerPosition }: { playerPosition: THREE
       const pos = resolvePosition(playerPosition);
       positionStore.playerPos.copy(pos);
 
-      // 动态批处理：如果队列积压严重，自动增加每帧加载数量
+      // 动态批处理:如果队列积压严重,自动增加每帧加载数量
       const BATCH_SIZE = mountQueue.current.length > 100 ? 50 : 15;
       if (mountQueue.current.length > 0) {
         const batch = mountQueue.current.splice(0, BATCH_SIZE);
@@ -102,7 +102,7 @@ export default function WorldManager({ playerPosition }: { playerPosition: THREE
       const tileZ = Math.floor(pos.z / TILE_SIZE);
       const now = Date.now();
       if (now - lastUpdateTime.current < 1000) return;
-      
+
       if (Math.abs(tileX - lastTilePos.current.x) >= 2 || Math.abs(tileZ - lastTilePos.current.z) >= 2) {
         lastTilePos.current = { x: tileX, z: tileZ };
         lastUpdateTime.current = now;

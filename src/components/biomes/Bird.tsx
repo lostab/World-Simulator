@@ -74,18 +74,18 @@ export function Bird({ playerPos }: { playerPos: THREE.Vector3 }) {
           <meshStandardMaterial color="#FFB300" />
         </mesh>
 
-        {/* 翅膀 - 使用压扁的球体/胶囊模拟圆润的翼面 (Twitter Logo 风格) */}
-        {/* 左翼 */}
+        {/* 翅膀 - 修复旋转中心，使其紧贴身体 */}
+        {/* 左翼 - 旋转中心在 [0.1, 0, 0]，模型向右延伸 */}
         <group position={[0.1, 0, 0]}>
-          <mesh ref={wingLRef} position={[0.2, 0, 0]} castShadow scale={[1, 0.05, 0.5]}>
+          <mesh ref={wingLRef} castShadow scale={[1, 0.05, 0.5]} position={[0.1, 0, 0]}>
             <sphereGeometry args={[0.2, 16, 16]} />
             <meshStandardMaterial color="#1DA1F2" />
           </mesh>
         </group>
 
-        {/* 右翼 */}
+        {/* 右翼 - 旋转中心在 [-0.1, 0, 0]，模型向左延伸 */}
         <group position={[-0.1, 0, 0]}>
-          <mesh ref={wingRRef} position={[-0.2, 0, 0]} castShadow scale={[1, 0.05, 0.5]}>
+          <mesh ref={wingRRef} castShadow scale={[1, 0.05, 0.5]} position={[-0.1, 0, 0]}>
             <sphereGeometry args={[0.2, 16, 16]} />
             <meshStandardMaterial color="#1DA1F2" />
           </mesh>

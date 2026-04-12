@@ -10,7 +10,7 @@ import { positionStore } from './positionStore';
 interface DecorationItem {
   pos: [number, number, number];
   worldPos: THREE.Vector3;
-  type: 'tree' | 'rock' | 'animal' | 'terrain';
+  type: 'tree' | 'rock' | 'animal' | 'terrain' | 'flower' | 'grass';
   animalType?: 'crab' | 'deer';
   terrainType?: 'circle-blue' | 'square-green';
   scale: number;
@@ -50,8 +50,8 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
   const tileWorldZ = tz * TILE_SIZE;
 
   const isGrassland = type === 'grassland' || type === 'meadow';
-  const treeCount = (isGrassland && pseudoRandom(tileKey, 999) < 0.66) ? 1 : 0;
-  const rockCount = type === 'rocky' ? 1 : 0;
+  const treeCount = (isGrassland && pseudoRandom(tileKey, 999) < 0.1) ? 1 : 0;
+  const rockCount = (type === 'rocky' && pseudoRandom(tileKey, 1000) < 0.05) ? 1 : 0;
 
   const treeItems = useMemo(() => {
     const items: { pos: [number, number, number]; rotation: number; scale: number }[] = [];
@@ -79,13 +79,39 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
       });
     }
     
-    // 新增：地形装饰物生成逻辑
-    if (pseudoRandom(tileKey, 200) < 0.3) { // 30% 概率生成地形覆盖
+    // 1. 花 (Flower)
+    if (pseudoRandom(tileKey, 300) < 0.1) {
+      const fx = (pseudoRandom(tileKey, 310) - 0.5) * 14;
+      const fz = (pseudoRandom(tileKey, 320) - 0.5) * 14;
+      items.push({
+        pos: [fx, 0.05, fz],
+        worldPos: new THREE.Vector3(tileWorldX + fx, 0.05, tileWorldZ + fz),
+        type: 'flower',
+        scale: 0.3 + pseudoRandom(tileKey, 330) * 0.4,
+        rotation: pseudoRandom(tileKey, 340) * Math.PI * 2,
+      });
+    }
+
+    // 2. 草 (Grass)
+    if (pseudoRandom(tileKey, 400) < 0.1) {
+      const gx = (pseudoRandom(tileKey, 410) - 0.5) * 14;
+      const gz = (pseudoRandom(tileKey, 420) - 0.5) * 14;
+      items.push({
+        pos: [gx, 0.05, gz],
+        worldPos: new THREE.Vector3(tileWorldX + gx, 0.05, tileWorldZ + gz),
+        type: 'grass',
+        scale: 0.5 + pseudoRandom(tileKey, 430) * 0.5,
+        rotation: pseudoRandom(tileKey, 440) * Math.PI * 2,
+      });
+    }
+    
+    // 地形装饰物
+    if (pseudoRandom(tileKey, 200) < 0.3) {
       const tx = (pseudoRandom(tileKey, 210) - 0.5) * 10;
       const tz = (pseudoRandom(tileKey, 220) - 0.5) * 10;
       const tType = pseudoRandom(tileKey, 230) > 0.5 ? 'circle-blue' : 'square-green';
       items.push({
-        pos: [tx, 0.01, tz], // 稍微抬高防止闪烁
+        pos: [tx, 0.01, tz],
         worldPos: new THREE.Vector3(tileWorldX + tx, 0.01, tileWorldZ + tz),
         type: 'terrain',
         terrainType: tType,
@@ -298,6 +324,28 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
                   transparent 
                   opacity={0.8} 
                 />
+              </mesh>
+            );
+          }
+          if (item.type === 'flower') {
+            return (
+              <group key={`${tileKey}-flower-${idx}`} position={item.pos} rotation={[0, item.rotation, 0]} scale={item.scale}>
+                <mesh position={[0, 0.2, 0]} castShadow>
+                  <cylinderGeometry args={[0.02, 0.02, 0.4]} />
+                  <meshStandardMaterial color="green" />
+                </mesh>
+                <mesh position={[0, 0.4, 0]} castShadow>
+                  <sphereGeometry args={[0.12, 8, 8]} />
+                  <meshStandardMaterial color="red" />
+                </mesh>
+              </group>
+            );
+          }
+          if (item.type === 'grass') {
+            return (
+              <mesh key={`${tileKey}-grass-${idx}`} position={item.pos} rotation={[0, item.rotation, 0]} scale={item.scale}>
+                <coneGeometry args={[0.03, 0.6, 4]} />
+                <meshStandardMaterial color="#4CAF50" />
               </mesh>
             );
           }
