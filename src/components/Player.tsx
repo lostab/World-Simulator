@@ -257,8 +257,8 @@ export default function Player({ position = [0, 0, 0], onPositionChange }: Playe
       camera.lookAt(currentLookAtPos.current);
       hasInitializedCamera.current = true;
     } else {
-      camera.position.lerp(targetCameraPos.current, 0.08);
-      currentLookAtPos.current.lerp(idealLookAtPos, 0.1);
+      camera.position.lerp(targetCameraPos.current, 1 - Math.exp(-5 * delta));
+      currentLookAtPos.current.lerp(idealLookAtPos, 1 - Math.exp(-8 * delta));
       camera.lookAt(currentLookAtPos.current);
     }
   })
