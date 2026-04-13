@@ -50,7 +50,7 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
   const tileWorldZ = tz * TILE_SIZE;
 
   const isGrassland = type === 'grassland' || type === 'meadow';
-  const treeCount = (isGrassland && pseudoRandom(tileKey, 999) < 0.1) ? 1 : 0;
+  const treeCount = (isGrassland && pseudoRandom(tileKey, 999) < 0.2) ? 1 : 0;
   const rockCount = (type === 'rocky' && pseudoRandom(tileKey, 1000) < 0.05) ? 1 : 0;
 
   const treeItems = useMemo(() => {
@@ -120,7 +120,7 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
       });
     }
 
-    if (pseudoRandom(tileKey, 50) < 0.03) {
+    if (pseudoRandom(tileKey, 50) < 0.1) {
       const rx = (pseudoRandom(tileKey, 60) - 0.5) * 14;
       const rz = (pseudoRandom(tileKey, 70) - 0.5) * 14;
       const aType = pseudoRandom(tileKey, 80) > 0.5 ? 'deer' : 'crab';

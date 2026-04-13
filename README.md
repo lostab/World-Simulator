@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# 🌍 World Simulator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An immersive, procedurally generated 3D world built with **React**, **Three.js**, and **@react-three/fiber**. Explore a vast, seamless landscape where nature is generated on the fly.
 
-Currently, two official plugins are available:
+## 🚀 Live Demo
+Check out the simulation in action: [ws.shuxia.site](https://ws.shuxia.site)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ✨ Features
 
-## React Compiler
+- **Infinite Terrain**: A procedurally generated world that loads as you move, ensuring a seamless experience without loading screens.
+- **Dynamic Vegetation**: High-fidelity trees, rocks, flowers, and grass are distributed across the landscape based on noise-driven biome logic.
+- **Living Ecosystem**: Encounter randomly spawned animals like deer and crabs that bring the world to life.
+- **Performance Optimized**: 
+  - **Floating Origin**: Prevents GPU precision artifacts in large-scale worlds.
+  - **Instanced Rendering**: Efficiently renders thousands of decorations with minimal overhead.
+  - **LIFO Tile Loading**: Prioritizes the horizon to eliminate visual popping.
+- **Smooth Movement**: Time-independent camera interpolation for a fluid, professional feel.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ For Developers
 
-## Expanding the ESLint configuration
+### Tech Stack
+- **Frontend**: React 18, TypeScript, Vite
+- **3D Engine**: Three.js, @react-three/fiber, @react-three/drei
+- **Optimization**: Custom Slot-based World Virtualization, Floating Origin System
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Quick Start
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/lostab/World-Simulator.git
+   cd World-Simulator
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+3. **Run in development mode**:
+   ```bash
+   npm run dev
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+4. **Build for production**:
+   ```bash
+   npm run build
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 📜 License
+This project is open-source. Feel free to explore, fork, and contribute!
