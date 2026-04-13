@@ -83,12 +83,16 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
     if (pseudoRandom(tileKey, 300) < 0.1) {
       const fx = (pseudoRandom(tileKey, 310) - 0.5) * 14;
       const fz = (pseudoRandom(tileKey, 320) - 0.5) * 14;
+      const colors = ['#ff0000', '#ffff00', '#0000ff', '#ff00ff', '#ffa500', '#ffffff'];
+      const flowerColor = colors[Math.floor(pseudoRandom(tileKey, 350) * colors.length)];
       items.push({
         pos: [fx, 0.05, fz],
         worldPos: new THREE.Vector3(tileWorldX + fx, 0.05, tileWorldZ + fz),
         type: 'flower',
         scale: 0.3 + pseudoRandom(tileKey, 330) * 0.4,
         rotation: pseudoRandom(tileKey, 340) * Math.PI * 2,
+        // 存储颜色以便在渲染时使用
+        color: flowerColor,
       });
     }
 
@@ -120,7 +124,7 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
       });
     }
 
-    if (pseudoRandom(tileKey, 50) < 0.1) {
+    if (pseudoRandom(tileKey, 50) < 0.05) {
       const rx = (pseudoRandom(tileKey, 60) - 0.5) * 14;
       const rz = (pseudoRandom(tileKey, 70) - 0.5) * 14;
       const aType = pseudoRandom(tileKey, 80) > 0.5 ? 'deer' : 'crab';
@@ -330,13 +334,13 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
           if (item.type === 'flower') {
             return (
               <group key={`${tileKey}-flower-${idx}`} position={item.pos} rotation={[0, item.rotation, 0]} scale={item.scale}>
-                <mesh position={[0, 0.2, 0]} castShadow>
-                  <cylinderGeometry args={[0.02, 0.02, 0.4]} />
+                <mesh position={[0, 0.4, 0]} castShadow>
+                  <cylinderGeometry args={[0.02, 0.02, 0.8]} />
                   <meshStandardMaterial color="green" />
                 </mesh>
-                <mesh position={[0, 0.4, 0]} castShadow>
+                <mesh position={[0, 0.8, 0]} castShadow>
                   <sphereGeometry args={[0.12, 8, 8]} />
-                  <meshStandardMaterial color="red" />
+                  <meshStandardMaterial color={(item as any).color || 'red'} />
                 </mesh>
               </group>
             );
@@ -344,7 +348,7 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
           if (item.type === 'grass') {
             return (
               <mesh key={`${tileKey}-grass-${idx}`} position={item.pos} rotation={[0, item.rotation, 0]} scale={item.scale}>
-                <coneGeometry args={[0.03, 0.6, 4]} />
+                <coneGeometry args={[0.03, 1.2, 4]} />
                 <meshStandardMaterial color="#4CAF50" />
               </mesh>
             );
