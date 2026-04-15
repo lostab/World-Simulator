@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TILE_SIZE } from './types';
@@ -147,29 +147,45 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
   const lastUpdatePos = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
   const UPDATE_THRESHOLD = 0.2;
 
-  useMemo(() => {
-    if (treeMeshesRef.current.length === 0) {
-      treeMeshesRef.current = TREE_PARTS.map(part => {
-        const mesh = new THREE.InstancedMesh(part.geo, part.mat, treeItems.length);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        return mesh;
-      });
-    }
-    const rMesh = new THREE.InstancedMesh(ROCK_CONFIG.geo, ROCK_CONFIG.mat, rockCount);
-    rMesh.castShadow = true;
-    rMesh.receiveShadow = true;
-    rockMeshRef.current = rMesh;
+  // 创建树木实例化网格（只创建一次，整个组件生命周期复用）
+  const treeMeshes = useMemo(() => {
+    return TREE_PARTS.map(part => {
+      const mesh = new THREE.InstancedMesh(part.geo, part.mat, treeItems.length);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    });
+  }, []); // 空依赖：永远只创建一次
 
+  // 创建石头实例化网格（只创建一次）
+  const rockMesh = useMemo(() => {
+    const mesh = new THREE.InstancedMesh(ROCK_CONFIG.geo, ROCK_CONFIG.mat, rockCount);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  }, []); // 空依赖：永远只创建一次
+
+  // 将网格存入 ref，供 useFrame 使用
+  useEffect(() => {
+    treeMeshesRef.current = treeMeshes;
+    rockMeshRef.current = rockMesh;
+  }, [treeMeshes, rockMesh]);
+
+  // 组件卸载时释放 GPU 资源
+  useEffect(() => {
     return () => {
-      treeMeshesRef.current.forEach(mesh => {
+      treeMeshes.forEach(mesh => {
         mesh.geometry.dispose();
-        if (Array.isArray(mesh.material)) mesh.material.forEach(m => m.dispose()); else mesh.material.dispose();
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(m => m.dispose());
+        } else {
+          mesh.material.dispose();
+        }
       });
-      rMesh.geometry.dispose();
-      rMesh.material.dispose();
+      rockMesh.geometry.dispose();
+      rockMesh.material.dispose();
     };
-  }, [treeItems.length, rockCount]);
+  }, [treeMeshes, rockMesh]);
 
   useFrame(() => {
     if (!treeDataRef.current || treeMeshesRef.current.length === 0) return;
@@ -286,15 +302,15 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
 
   return (
     <group>
-      {treeMeshesRef.current.length > 0 && treeDataRef.current && (
+      {treeMeshes.length > 0 && treeDataRef.current && (
         <>
-          {treeMeshesRef.current.map((mesh, idx) => (
+          {treeMeshes.map((mesh, idx) => (
             <primitive key={`tree-part-${idx}`} object={mesh} />
           ))}
         </>
       )}
-      {rockMeshRef.current && (
-        <primitive object={rockMeshRef.current} />
+      {rockMesh && (
+        <primitive object={rockMesh} />
       )}
       <group>
         {decorations.map((item, idx) => {
