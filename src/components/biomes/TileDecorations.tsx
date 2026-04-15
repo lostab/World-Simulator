@@ -145,7 +145,7 @@ export default function TileDecorations({ tileKey, type }: { tileKey: string, ty
   const treeMeshesRef = useRef<THREE.InstancedMesh[]>([]);
   const rockMeshRef = useRef<THREE.InstancedMesh | null>(null);
   const lastUpdatePos = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
-  const UPDATE_THRESHOLD = 0.5; // 原来是 0.2，减少更新频率
+  const UPDATE_THRESHOLD = 1.0; // 从 0.5 提升到 1.0，减少更新频率
 
   // 创建树木实例化网格（只创建一次，整个组件生命周期复用）
   const treeMeshes = useMemo(() => {

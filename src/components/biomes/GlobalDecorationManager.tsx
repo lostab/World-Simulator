@@ -65,8 +65,8 @@ export default function GlobalDecorationManager() {
   }, [geometries, materials]);
 
   useFrame(() => {
-    // 每 2 帧执行一次（30 FPS 更新，人眼几乎无法察觉差异）
-    frameSkip.current = (frameSkip.current + 1) % 2;
+    // 每 3 帧执行一次（20 FPS 更新，完全足够，CPU 负载再降 33%）
+    frameSkip.current = (frameSkip.current + 1) % 3;
     if (frameSkip.current !== 0) return;
 
     const absPlayerPos = positionStore.getAbsolutePlayerPos();
