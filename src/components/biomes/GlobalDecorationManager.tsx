@@ -44,6 +44,7 @@ export default function GlobalDecorationManager() {
   }, [treeParts]);
 
   const meshRefs = useRef<THREE.InstancedMesh[]>([]);
+  const frameSkip = useRef(0);
 
   // 🔧 关键修复2：组件卸载时彻底释放 GPU 资源
   useEffect(() => {
@@ -64,6 +65,10 @@ export default function GlobalDecorationManager() {
   }, [geometries, materials]);
 
   useFrame(() => {
+    // 每 2 帧执行一次（30 FPS 更新，人眼几乎无法察觉差异）
+    frameSkip.current = (frameSkip.current + 1) % 2;
+    if (frameSkip.current !== 0) return;
+
     const absPlayerPos = positionStore.getAbsolutePlayerPos();
     const worldOffsetX = positionStore.worldOffset.x;
     const worldOffsetZ = positionStore.worldOffset.z;
